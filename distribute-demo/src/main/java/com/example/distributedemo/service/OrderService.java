@@ -7,7 +7,11 @@ import com.example.distributedemo.model.Order;
 import com.example.distributedemo.model.OrderItem;
 import com.example.distributedemo.model.Product;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
@@ -29,11 +33,24 @@ public class OrderService {
     //购买商品数量
     private int purchaseProductNum = 1;
 
-    @Transactional(rollbackFor = Exception.class)
+    @Autowired
+    private PlatformTransactionManager platformTransactionManager;
+    @Autowired
+    private TransactionDefinition transactionDefinition;
+
+
+    // Spring 手动控制事务需要注释掉
+//    @Transactional(rollbackFor = Exception.class)
     public synchronized Integer createOrder() throws Exception {
+
+        // 开启事务
+        TransactionStatus transaction = platformTransactionManager.getTransaction(transactionDefinition);
+
 
         Product product = productMapper.selectByPrimaryKey(purchaseProductId);
         if (product == null) {
+            // 事务回滚
+            platformTransactionManager.rollback(transaction);
             throw new Exception("购买商品：" + purchaseProductId + "不存在");
         }
 
@@ -42,6 +59,8 @@ public class OrderService {
         System.out.println(Thread.currentThread().getName() + "库存数：" + currentCount);
         //校验库存
         if (purchaseProductNum > currentCount) {
+            // 事务回滚
+            platformTransactionManager.rollback(transaction);
             throw new Exception("商品" + purchaseProductId + "仅剩" + currentCount + "件，无法购买");
         }
 
@@ -82,6 +101,10 @@ public class OrderService {
         orderItem.setUpdateTime(new Date());
         orderItem.setUpdateUser("xxx");
         orderItemMapper.insertSelective(orderItem);
+
+        // 提交事务
+        platformTransactionManager.commit(transaction);
+
         return order.getId();
     }
 
