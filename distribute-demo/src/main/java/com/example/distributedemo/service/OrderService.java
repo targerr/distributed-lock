@@ -59,7 +59,6 @@ public class OrderService {
                 platformTransactionManager.rollback(transaction);
                 throw new Exception("购买商品：" + purchaseProductId + "不存在");
             }
-
             //商品当前库存
             Integer currentCount = product.getCount();
             System.out.println(Thread.currentThread().getName() + "库存数：" + currentCount);
@@ -70,19 +69,8 @@ public class OrderService {
                 throw new Exception("商品" + purchaseProductId + "仅剩" + currentCount + "件，无法购买");
             }
 
-            // 计算减库存
-            Integer leftCount = currentCount - purchaseProductNum;
-
-//        // 更新库存
-//        product.setCount(leftCount);
-//        product.setUpdateTime(new Date());
-//        product.setUpdateUser("XXXX");
-//
-//        productMapper.updateByPrimaryKey(product);
-
             // 使用数据库增量（使用SQL减库存）
             productMapper.updateProductCount(purchaseProductNum, "xxx", new Date(), product.getId());
-
 
             // 提交事务
             platformTransactionManager.commit(transaction);
