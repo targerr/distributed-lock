@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 @Slf4j
@@ -38,13 +40,16 @@ public class OrderService {
     @Autowired
     private TransactionDefinition transactionDefinition;
 
+    private Lock lock = new ReentrantLock();
 
     // Spring 手动控制事务需要注释掉
 //    @Transactional(rollbackFor = Exception.class)
     public Integer createOrder() throws Exception {
 
         Product product = null;
-        synchronized (this) {
+
+        lock.lock();
+        try {
             // 开启事务
             TransactionStatus transaction = platformTransactionManager.getTransaction(transactionDefinition);
 
@@ -81,6 +86,8 @@ public class OrderService {
 
             // 提交事务
             platformTransactionManager.commit(transaction);
+        } finally {
+            lock.unlock();
         }
 
 
