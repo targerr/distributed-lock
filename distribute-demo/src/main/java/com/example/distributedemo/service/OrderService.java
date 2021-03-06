@@ -30,7 +30,7 @@ public class OrderService {
     private int purchaseProductNum = 1;
 
     @Transactional(rollbackFor = Exception.class)
-    public Integer createOrder() throws Exception {
+    public synchronized Integer createOrder() throws Exception {
 
         Product product = productMapper.selectByPrimaryKey(purchaseProductId);
         if (product == null) {
@@ -48,7 +48,6 @@ public class OrderService {
         // 计算减库存
         Integer leftCount = currentCount - purchaseProductNum;
 
-        System.err.println("更新库存数量： " + leftCount);
 //        // 更新库存
 //        product.setCount(leftCount);
 //        product.setUpdateTime(new Date());
