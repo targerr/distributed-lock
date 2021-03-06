@@ -41,31 +41,32 @@ public class OrderService {
 
     // Spring 手动控制事务需要注释掉
 //    @Transactional(rollbackFor = Exception.class)
-    public synchronized Integer createOrder() throws Exception {
+    public Integer createOrder() throws Exception {
 
-        // 开启事务
-        TransactionStatus transaction = platformTransactionManager.getTransaction(transactionDefinition);
+        Product product = null;
+        synchronized (this) {
+            // 开启事务
+            TransactionStatus transaction = platformTransactionManager.getTransaction(transactionDefinition);
 
+            product = productMapper.selectByPrimaryKey(purchaseProductId);
+            if (product == null) {
+                // 事务回滚
+                platformTransactionManager.rollback(transaction);
+                throw new Exception("购买商品：" + purchaseProductId + "不存在");
+            }
 
-        Product product = productMapper.selectByPrimaryKey(purchaseProductId);
-        if (product == null) {
-            // 事务回滚
-            platformTransactionManager.rollback(transaction);
-            throw new Exception("购买商品：" + purchaseProductId + "不存在");
-        }
+            //商品当前库存
+            Integer currentCount = product.getCount();
+            System.out.println(Thread.currentThread().getName() + "库存数：" + currentCount);
+            //校验库存
+            if (purchaseProductNum > currentCount) {
+                // 事务回滚
+                platformTransactionManager.rollback(transaction);
+                throw new Exception("商品" + purchaseProductId + "仅剩" + currentCount + "件，无法购买");
+            }
 
-        //商品当前库存
-        Integer currentCount = product.getCount();
-        System.out.println(Thread.currentThread().getName() + "库存数：" + currentCount);
-        //校验库存
-        if (purchaseProductNum > currentCount) {
-            // 事务回滚
-            platformTransactionManager.rollback(transaction);
-            throw new Exception("商品" + purchaseProductId + "仅剩" + currentCount + "件，无法购买");
-        }
-
-        // 计算减库存
-        Integer leftCount = currentCount - purchaseProductNum;
+            // 计算减库存
+            Integer leftCount = currentCount - purchaseProductNum;
 
 //        // 更新库存
 //        product.setCount(leftCount);
@@ -74,10 +75,17 @@ public class OrderService {
 //
 //        productMapper.updateByPrimaryKey(product);
 
-         // 使用数据库增量（使用SQL减库存）
-         productMapper.updateProductCount(purchaseProductNum, "xxx", new Date(), product.getId());
+            // 使用数据库增量（使用SQL减库存）
+            productMapper.updateProductCount(purchaseProductNum, "xxx", new Date(), product.getId());
 
 
+            // 提交事务
+            platformTransactionManager.commit(transaction);
+        }
+
+
+        // 开启事务
+        TransactionStatus transaction1 = platformTransactionManager.getTransaction(transactionDefinition);
 
         Order order = new Order();
         order.setOrderAmount(product.getPrice().multiply(new BigDecimal(purchaseProductNum)));
@@ -103,7 +111,7 @@ public class OrderService {
         orderItemMapper.insertSelective(orderItem);
 
         // 提交事务
-        platformTransactionManager.commit(transaction);
+        platformTransactionManager.commit(transaction1);
 
         return order.getId();
     }
