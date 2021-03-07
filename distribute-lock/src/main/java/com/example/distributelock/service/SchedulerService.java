@@ -10,18 +10,18 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class SchedulerService {
-//    @Autowired
-//    private RedisTemplate redisTemplate;
-//
-//    @Scheduled(cron = "0/5 * * * * ?")
-//    public void sendSms(){
-//        try(RedisLock redisLock = new RedisLock(redisTemplate,"autoSms",30)) {
-//            if (redisLock.getLock()){
-//                log.info("向138xxxxxxxx发送短信！");
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    @Scheduled(cron = "0/5 * * * * ?")
+    public void sendSms() {
+        try (RedisLock redisLock = new RedisLock(redisTemplate, "autoSms", 30)) {
+            if (redisLock.getLock()) {
+                log.info("向138xxxxxxxx发送短信！");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
 }
